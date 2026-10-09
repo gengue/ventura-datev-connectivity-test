@@ -1,0 +1,6 @@
+/dist/
+*.exe
+*.test
+.DS_Store
+.env*
+diagnostic-report*

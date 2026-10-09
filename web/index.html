@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="probe-token" content="{{TOKEN}}">
+  <title>Ventura DATEV Connectivity Test</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+<main>
+  <header><img src="/logo.png" width="200" alt="Ventura Travel"><span class="tag">FINANCE · CONNECTION CHECK</span></header>
+  <h1>Can this desktop connect?</h1>
+  <p class="intro">Run these checks inside your remote Windows desktop. They test connections without signing in to DATEV or reading accounting records.</p>
+  <div class="toolbar"><button id="run-all">Run all checks</button><span id="activity" role="status" aria-live="polite">Ready to test</span></div>
+  <section aria-labelledby="internet-title">
+    <div class="section-heading"><div><span class="step">01</span><h2 id="internet-title">Internet</h2></div><button class="secondary" data-check="internet">Test Internet</button></div>
+    <p>Check DNS, HTTPS and certificate verification using <code>example.com</code>.</p>
+    <div id="internet-results" class="results" aria-live="polite"><p class="empty">Not tested yet</p></div>
+  </section>
+  <section aria-labelledby="hasura-title">
+    <div class="section-heading"><div><span class="step">02</span><h2 id="hasura-title">Ventura API</h2></div><button class="secondary" data-check="hasura">Test Hasura</button></div>
+    <p>Send an anonymous query for the ten latest trip IDs and creation dates. No passwords or API keys are sent.</p>
+    <details><summary>API settings</summary>
+      <label for="endpoint">HTTPS endpoint</label><input id="endpoint" type="url" value="https://hasura.venturatravel.org/v1/graphql" spellcheck="false" maxlength="2048">
+      <label for="query">Read-only GraphQL query</label><textarea id="query" rows="4" spellcheck="false" maxlength="8192">query ConnectivityProbe { trip(limit: 10, order_by: {created_at: desc}) { id created_at } }</textarea>
+      <p class="help">Use only an approved anonymous endpoint. Custom queries show a summary, not their response body. Mutations and subscriptions are blocked.</p>
+    </details>
+    <div id="hasura-results" class="results" aria-live="polite"><p class="empty">Not tested yet</p></div>
+  </section>
+  <section aria-labelledby="datev-title">
+    <div class="section-heading"><div><span class="step">03</span><h2 id="datev-title">DATEVconnect</h2></div><button class="secondary" data-check="datev">Test DATEVconnect</button></div>
+    <p>Check one local or internal address. An open port or HTTP response does not confirm access to DATEV data.</p>
+    <div class="fields">
+      <div><label for="datev-host">Hostname or IP</label><input id="datev-host" value="localhost" spellcheck="false" maxlength="253" autocomplete="off"></div>
+      <div><label for="datev-port">Port</label><input id="datev-port" type="number" min="1" max="65535" value="58454"></div>
+      <div><label for="datev-scheme">Protocol</label><select id="datev-scheme"><option value="http">HTTP</option><option value="https">HTTPS</option></select></div>
+    </div>
+    <p class="help">The default <code>localhost:58454/datev/api</code> is a starting point, not a confirmed installation. Ask your administrator for the correct address. Use HTTPS for another computer. Certificates are always verified.</p>
+    <div id="datev-results" class="results" aria-live="polite"><p class="empty">Not tested yet</p></div>
+  </section>
+  <section aria-labelledby="report-title">
+    <div class="section-heading"><div><h2 id="report-title">Diagnostic report</h2></div><button id="copy" class="secondary" disabled>Copy report</button></div>
+    <p>Review the report before sharing it with IT. It can include internal hostnames and connection errors. Nothing is uploaded automatically.</p>
+    <textarea id="report" rows="8" readonly aria-label="Copyable diagnostic report" placeholder="Your results will appear here."></textarea>
+    <h3>Session log</h3><pre id="logs" role="log" aria-live="polite">Ready. Results stay in this page until it is closed or reloaded.</pre>
+  </section>
+  <footer>Portable connection test. No installation, accounting sync or background service. Keep the application window open while testing.</footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,100 @@
+name: Test and release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Test
+        run: go test ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Race detector
+        if: runner.os == 'Linux'
+        run: go test -race ./...
+      - name: Windows executable smoke test
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          go build -trimpath -o agent.exe .
+          if ($LASTEXITCODE -ne 0) { throw 'Windows build failed' }
+          $version = & .\agent.exe -version
+          if ($LASTEXITCODE -ne 0 -or $version -ne 'dev') { throw 'Version smoke test failed' }
+          $agent = Start-Process -FilePath .\agent.exe -ArgumentList '-no-browser' -PassThru
+          try {
+            $html = $null
+            for ($attempt = 0; $attempt -lt 20; $attempt++) {
+              try { $html = Invoke-WebRequest http://127.0.0.1:8080/; break }
+              catch { Start-Sleep -Milliseconds 250 }
+            }
+            if ($null -eq $html) { throw 'Agent did not start' }
+            $token = [regex]::Match($html.Content, 'name="probe-token" content="([^"]+)"').Groups[1].Value
+            if (-not $token) { throw 'Missing session token' }
+            $body = '{"check":"datev","datev":{"host":"127.0.0.1","port":1,"scheme":"http"}}'
+            $report = Invoke-RestMethod http://127.0.0.1:8080/api/check -Method Post -ContentType application/json -Headers @{'X-Probe-Token'=$token} -Body $body
+            if ($report.os -ne 'windows' -or $report.results.Count -ne 2 -or $report.results[1].code -ne 'connection_refused') { throw 'Windows diagnostic smoke test failed' }
+          } finally {
+            if (-not $agent.HasExited) { Stop-Process -Id $agent.Id }
+          }
+
+  release:
+    name: Publish Windows release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Build and package
+        shell: bash
+        env:
+          VERSION: ${{ github.ref_name }}
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: '0'
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Use a version tag such as v0.1.0'; exit 1; }
+          mkdir -p dist
+          go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o dist/datev-test-agent-windows-amd64.exe .
+          cp QUICK_START.txt LICENSE README.md dist/
+          cd dist
+          zip -q ventura-datev-connectivity-test-windows-amd64.zip datev-test-agent-windows-amd64.exe QUICK_START.txt LICENSE README.md
+          sha256sum datev-test-agent-windows-amd64.exe ventura-datev-connectivity-test-windows-amd64.zip > checksums.txt
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if gh release view "$VERSION" > /dev/null 2>&1; then
+            gh release upload "$VERSION" dist/datev-test-agent-windows-amd64.exe dist/ventura-datev-connectivity-test-windows-amd64.zip dist/checksums.txt --clobber
+          else
+            gh release create "$VERSION" dist/datev-test-agent-windows-amd64.exe dist/ventura-datev-connectivity-test-windows-amd64.zip dist/checksums.txt --verify-tag --title "Ventura DATEV Connectivity Test $VERSION" --notes-file RELEASE_NOTES.md
+          fi

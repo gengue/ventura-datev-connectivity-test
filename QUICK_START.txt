@@ -1,0 +1,24 @@
+Ventura DATEV Connectivity Test
+
+1. Download and run datev-test-agent-windows-amd64.exe INSIDE your remote
+   Windows desktop. Do not install Go or any development tools.
+2. Keep the application window open.
+3. Open http://127.0.0.1:8080/ in that remote desktop's browser if it did
+   not open automatically.
+4. Click Run all checks.
+5. Review the results, then Copy report if you need help from IT.
+   Review internal hostnames before sharing. Do not post reports publicly.
+6. Close the application window or press Ctrl+C to stop.
+
+The default DATEV address is a starting point. Ask your administrator for
+the actual host, port and protocol. Use HTTPS for another computer.
+
+An HTTP 401/403 is evidence that a service responds; it does not confirm
+access to accounting data. No DATEV credentials or records are requested.
+
+The application itself requires no installation or administrator rights.
+It is unsigned. If security policy blocks execution, contact IT rather
+than disabling protection.
+
+Latest downloads and full instructions:
+https://github.com/gengue/ventura-datev-connectivity-test/releases/latest
