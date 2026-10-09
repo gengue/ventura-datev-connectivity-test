@@ -32,7 +32,7 @@ func ValidateQuery(query string) error {
 	for i := 0; i < len(query); {
 		c := query[i]
 		if c == '#' {
-			for i < len(query) && query[i] != '\n' {
+			for i < len(query) && query[i] != '\n' && query[i] != '\r' {
 				i++
 			}
 			continue

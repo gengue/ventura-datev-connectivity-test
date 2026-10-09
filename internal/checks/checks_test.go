@@ -26,6 +26,9 @@ func TestReadOnlyQueries(t *testing.T) {
 			t.Errorf("unsafe/invalid query accepted: %q", query)
 		}
 	}
+	if ValidateQuery("query Q { trip { id } } # comment\rmutation M { remove }") == nil {
+		t.Error("mutation after a carriage-return comment was accepted")
+	}
 }
 
 func TestGraphQLResponsesAndAnonymousRequest(t *testing.T) {
