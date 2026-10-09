@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -59,7 +60,8 @@ func failure(check, stage, target string, start time.Time, err error) Result {
 		r.Code = "timeout"
 	case errors.As(err, &dns):
 		r.Code = "dns_error"
-	case errors.Is(err, syscall.ECONNREFUSED):
+	// Windows sockets use Winsock WSAECONNREFUSED (10061), not the POSIX errno.
+	case errors.Is(err, syscall.ECONNREFUSED) || runtime.GOOS == "windows" && errors.Is(err, syscall.Errno(10061)):
 		r.Code = "connection_refused"
 	case errors.As(err, &certificate), errors.As(err, &authority), errors.As(err, &hostname):
 		r.Code = "tls_certificate_error"
